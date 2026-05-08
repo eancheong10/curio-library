@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
     ];
     const angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
 
-    const userPrompt = `${directionInstruction} ${modeFlavor} The reader has about 5 minutes. Make it captivating. ANGLE FOR THIS ARTICLE: ${angle}. Include 4 short related rabbit-hole topics they might want to explore next. The body MUST be a complete 5-7 paragraph article (~700-1000 words) with a real ending — never trail off mid-sentence.`;
+    const userPrompt = `${directionInstruction} ${modeFlavor} The reader has about 4 minutes. Make it captivating. ANGLE FOR THIS ARTICLE: ${angle}. Include 4 short related rabbit-hole topics they might want to explore next. CRITICAL: The body MUST be a COMPLETE 5-6 paragraph article between 500 and 750 words with a clear concluding paragraph. Do NOT exceed 750 words. Do NOT trail off mid-sentence. Finish every sentence and end with a satisfying final thought.`;
 
     const tools = [{
       type: "function",
@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
           properties: {
             title: { type: "string", description: "Catchy title (max 90 chars)" },
             summary: { type: "string", description: "One-sentence hook (max 160 chars)" },
-            body: { type: "string", description: "5-7 paragraph article, conversational, ~700-1000 words. Separate paragraphs with double newlines." },
+            body: { type: "string", description: "COMPLETE 5-6 paragraph article, 500-750 words, conversational, with a real concluding paragraph. Separate paragraphs with double newlines. Never trail off." },
             topic: { type: "string", description: "Short topic label (1-4 words)" },
             emoji: { type: "string", description: "A single emoji representing the article" },
             related_topics: {
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
         ],
         tools,
         tool_choice: { type: "function", function: { name: "publish_article" } },
-        max_tokens: 4000,
+        max_tokens: 8000,
       }),
     });
 
