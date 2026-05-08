@@ -348,9 +348,12 @@ const ChallengeRoom = () => {
     const isChallenger = user.id === challenge.challenger_id;
     const patch = isChallenger ? { challenger_done_reading: true } : { opponent_done_reading: true };
     try {
-      const updatedChallenge = { ...challenge, ...patch };
+      const updatedChallenge = { ...challenge, ...patch, status: "quizzing" as Status };
       setChallenge(updatedChallenge);
-      const { error: doneError } = await supabase.from("quiz_challenges").update(patch).eq("id", challenge.id);
+      const { error: doneError } = await supabase
+        .from("quiz_challenges")
+        .update({ ...patch, status: "quizzing" })
+        .eq("id", challenge.id);
       if (doneError) throw doneError;
 
       if (!xpAwardedRef.current && challenge.article_body && challenge.topic && challenge.article_title) {
@@ -368,10 +371,10 @@ const ChallengeRoom = () => {
       const questions = await ensureQuestions(updatedChallenge);
       const { error: quizError } = await supabase
         .from("quiz_challenges")
-        .update({ ...patch, questions: questions as any, status: "quizzing" })
+        .update({ questions: questions as any })
         .eq("id", challenge.id);
       if (quizError) throw quizError;
-      setChallenge({ ...updatedChallenge, questions, status: "quizzing" });
+      setChallenge({ ...updatedChallenge, questions });
       setQuizCountdown(null);
     } catch (e) {
       console.error(e);
