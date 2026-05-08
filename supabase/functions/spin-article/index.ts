@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
     ];
     const angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
 
-    const userPrompt = `${directionInstruction} ${modeFlavor} The reader has about 5 minutes. Make it captivating. ANGLE FOR THIS ARTICLE: ${angle}. Include 4 short related rabbit-hole topics they might want to explore next. The body MUST be a complete 5-7 paragraph article (~700-1000 words) with a real ending — never trail off mid-sentence.`;
+    const userPrompt = `${directionInstruction} ${modeFlavor} The reader has about 4 minutes. Make it captivating. ANGLE FOR THIS ARTICLE: ${angle}. Include 4 short related rabbit-hole topics they might want to explore next. CRITICAL: The body MUST be a COMPLETE 5-6 paragraph article between 500 and 750 words with a clear concluding paragraph. Do NOT exceed 750 words. Do NOT trail off mid-sentence. Finish every sentence and end with a satisfying final thought.`;
 
     const tools = [{
       type: "function",
