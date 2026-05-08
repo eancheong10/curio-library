@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
           properties: {
             title: { type: "string", description: "Catchy title (max 90 chars)" },
             summary: { type: "string", description: "One-sentence hook (max 160 chars)" },
-            body: { type: "string", description: "5-7 paragraph article, conversational, ~700-1000 words. Separate paragraphs with double newlines." },
+            body: { type: "string", description: "COMPLETE 5-6 paragraph article, 500-750 words, conversational, with a real concluding paragraph. Separate paragraphs with double newlines. Never trail off." },
             topic: { type: "string", description: "Short topic label (1-4 words)" },
             emoji: { type: "string", description: "A single emoji representing the article" },
             related_topics: {
