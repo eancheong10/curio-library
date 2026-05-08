@@ -131,7 +131,7 @@ export const FriendsPanel = () => {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Friend's display name or 12-char code…"
+          placeholder="Friend's name (partial OK) or 12-char code…"
           className="bg-paper/50 border-wood/30"
         />
         <Button type="submit" size="sm" disabled={busy || !query.trim()} className="bg-gradient-gold text-ink">
