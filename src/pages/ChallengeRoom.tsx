@@ -314,17 +314,24 @@ const ChallengeRoom = () => {
       .is("reading_started_at", null);
   }, [challenge?.status, challenge?.reading_started_at, challenge?.article_body, challenge?.id]);
 
-  // Generate questions in the background while both readers are reading.
+  // Generate questions in the background — either reader can do it once reading starts.
+  // Whoever wins the write race is fine; the other side will see the questions via realtime.
   useEffect(() => {
     if (!challenge || !user) return;
     if (challenge.status !== "reading" || !challenge.article_body || challenge.questions?.length) return;
-    if (user.id !== challenge.challenger_id) return;
+    // Only the challenger generates initially to avoid double-spend; opponent
+    // is a fallback if questions still aren't there 20s in or after reading is done.
+    const isChallenger = user.id === challenge.challenger_id;
+    const bothDone = challenge.challenger_done_reading && challenge.opponent_done_reading;
+    const timeExpired = readingTimedOut(challenge.reading_started_at, challenge.article_body);
+    if (!isChallenger && !bothDone && !timeExpired) return;
     (async () => {
       try {
         const { data: quiz, error: qErr } = await supabase.functions.invoke("generate-quiz", {
           body: { topic: challenge.topic, title: challenge.article_title, body: challenge.article_body, count: challenge.question_count },
         });
         if (qErr) throw qErr;
+        if (!quiz?.questions?.length) throw new Error("No questions");
         await supabase.from("quiz_challenges").update({ questions: shuffleChallengeQuestions(quiz.questions) as any }).eq("id", challenge.id);
       } catch (e) {
         console.error(e);
@@ -332,7 +339,7 @@ const ChallengeRoom = () => {
       }
     })();
     // eslint-disable-next-line
-  }, [challenge?.status, challenge?.article_body, challenge?.questions]);
+  }, [challenge?.status, challenge?.article_body, challenge?.questions, challenge?.challenger_done_reading, challenge?.opponent_done_reading, readingLeft]);
 
   const markDoneReading = async () => {
     if (!challenge || !user) return;
