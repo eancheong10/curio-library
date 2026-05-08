@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LibraryShell } from "@/components/LibraryShell";
 import { PaperCard } from "@/components/PaperCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Clock, Sparkles, TrendingUp, Maximize2, X, Palette, Flame, Volume2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, BookOpen, Clock, Sparkles, TrendingUp, Maximize2, X, Palette, Flame, Volume2, Pencil, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
@@ -13,6 +14,7 @@ import { ThemeId } from "@/lib/types";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { Switch } from "@/components/ui/switch";
 import { isSoundEnabled, setSoundEnabled, Sfx } from "@/lib/sounds";
+import { toast } from "sonner";
 
 interface ProfileRow {
   display_name: string | null;
