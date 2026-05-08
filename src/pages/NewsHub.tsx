@@ -46,21 +46,25 @@ const NewsHub = () => {
   const cacheKey = (country: string) => `curio_news_${country}`;
   const todayKey = () => new Date().toISOString().slice(0, 10);
 
-  const load = async (force = false, country = settings.country) => {
+  const load = async (force = false, country = settings.country, attempt = 0) => {
     setLoading(true);
     try {
       if (!force) {
-        // Try sessionStorage then localStorage (persists across reloads, same day only)
         const fromSession = sessionStorage.getItem(cacheKey(country));
         const fromLocal = localStorage.getItem(cacheKey(country));
         const cached = fromSession || fromLocal;
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed?.date === todayKey() && Array.isArray(parsed.articles)) {
+          if (parsed?.date === todayKey() && Array.isArray(parsed.articles) && parsed.articles.length > 0) {
             setArticles(parsed.articles);
             setDate(parsed.date || "");
             setLoading(false);
             return;
+          }
+          // Empty cache → drop it so we re-fetch
+          if (!parsed?.articles?.length) {
+            sessionStorage.removeItem(cacheKey(country));
+            localStorage.removeItem(cacheKey(country));
           }
         }
       }
@@ -68,10 +72,16 @@ const NewsHub = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const fetched: NewsArticle[] = data.articles || [];
+      // Auto-retry once if the model returned an empty list
+      if (fetched.length === 0 && attempt < 2) {
+        return load(true, country, attempt + 1);
+      }
       setArticles(fetched);
       setDate(data.date || "");
-      sessionStorage.setItem(cacheKey(country), JSON.stringify(data));
-      localStorage.setItem(cacheKey(country), JSON.stringify(data));
+      if (fetched.length > 0) {
+        sessionStorage.setItem(cacheKey(country), JSON.stringify(data));
+        localStorage.setItem(cacheKey(country), JSON.stringify(data));
+      }
       if (force) {
         if (fetched.length > 0) toast.success(`${fetched.length} fresh ${fetched.length === 1 ? "story" : "stories"} on the shelf.`);
         else toast("No stories found right now — try again in a moment.");

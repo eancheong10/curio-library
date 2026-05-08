@@ -47,6 +47,7 @@ const Favourites = () => {
   const [draggedArticleId, setDraggedArticleId] = useState<string | null>(null);
   // Add-article picker
   const [pickerShelfId, setPickerShelfId] = useState<string | "unfiled" | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
 
   useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
 
@@ -370,21 +371,36 @@ const Favourites = () => {
       )}
 
       {/* Add-article picker */}
-      <Dialog open={pickerShelfId !== null} onOpenChange={(o) => !o && setPickerShelfId(null)}>
+      <Dialog open={pickerShelfId !== null} onOpenChange={(o) => { if (!o) { setPickerShelfId(null); setPickerQuery(""); } }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Add an article to this shelf</DialogTitle>
             <DialogDescription>
-              Pick from your favourites (sorted A–Z). Tap one to move it onto this shelf.
+              Search or scroll your favourites (sorted A–Z). Tap one to move it onto this shelf.
             </DialogDescription>
           </DialogHeader>
+          <Input
+            value={pickerQuery}
+            onChange={(e) => setPickerQuery(e.target.value)}
+            placeholder="Search by title or topic…"
+            autoFocus
+            className="bg-paper/50 border-wood/30"
+          />
           <div className="overflow-y-auto -mx-2 px-2 space-y-1">
             {allArticlesAlpha.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-6 text-center">
                 You don't have any saved favourites yet.
               </p>
-            ) : (
-              allArticlesAlpha.map((a) => {
+            ) : (() => {
+              const q = pickerQuery.trim().toLowerCase();
+              const filtered = q
+                ? allArticlesAlpha.filter((a) =>
+                    a.title.toLowerCase().includes(q) || (a.topic || "").toLowerCase().includes(q))
+                : allArticlesAlpha;
+              if (filtered.length === 0) {
+                return <p className="text-sm text-muted-foreground italic py-6 text-center">No matches for “{pickerQuery}”.</p>;
+              }
+              return filtered.map((a) => {
                 const here = (a.bookshelf_id || "unfiled") === pickerShelfId;
                 return (
                   <button
@@ -394,6 +410,7 @@ const Favourites = () => {
                       await moveArticle(a.id, pickerShelfId === "unfiled" ? null : (pickerShelfId as string));
                       toast.success("Added to shelf.");
                       setPickerShelfId(null);
+                      setPickerQuery("");
                     }}
                     className={`w-full text-left p-3 rounded border transition-colors ${
                       here
@@ -406,8 +423,8 @@ const Favourites = () => {
                     {here && <div className="text-[11px] italic text-muted-foreground mt-0.5">Already on this shelf</div>}
                   </button>
                 );
-              })
-            )}
+              });
+            })()}
           </div>
         </DialogContent>
       </Dialog>

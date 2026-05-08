@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LibraryShell } from "@/components/LibraryShell";
 import { PaperCard } from "@/components/PaperCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Clock, Sparkles, TrendingUp, Maximize2, X, Palette, Flame, Volume2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, BookOpen, Clock, Sparkles, TrendingUp, Maximize2, X, Palette, Flame, Volume2, Pencil, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
@@ -13,6 +14,7 @@ import { ThemeId } from "@/lib/types";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { Switch } from "@/components/ui/switch";
 import { isSoundEnabled, setSoundEnabled, Sfx } from "@/lib/sounds";
+import { toast } from "sonner";
 
 interface ProfileRow {
   display_name: string | null;
@@ -36,24 +38,64 @@ const Profile = () => {
   const [connections, setConnections] = useState<ConnectionRow[]>([]);
   const [mapFull, setMapFull] = useState(false);
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      const [{ data: prof }, { data: events }, { data: conns }] = await Promise.all([
-        supabase.from("profiles").select("display_name, xp, articles_read, seconds_read, top_topic, current_streak, highest_streak, last_read_date").eq("id", user.id).maybeSingle(),
-        supabase.from("xp_events").select("topic, xp").eq("user_id", user.id),
-        supabase.from("topic_connections").select("from_topic, to_topic, weight").eq("user_id", user.id),
-      ]);
-      setProfile(prof as ProfileRow);
-      const tally = new Map<string, number>();
-      (events || []).forEach((e: { topic: string; xp: number }) => tally.set(e.topic, (tally.get(e.topic) || 0) + e.xp));
-      setTopicXp([...tally.entries()].map(([topic, xp]) => ({ topic, xp })).sort((a, b) => b.xp - a.xp));
-      setConnections((conns || []) as ConnectionRow[]);
-    })();
+    const [{ data: prof }, { data: events }, { data: conns }] = await Promise.all([
+      supabase.from("profiles").select("display_name, xp, articles_read, seconds_read, top_topic, current_streak, highest_streak, last_read_date").eq("id", user.id).maybeSingle(),
+      supabase.from("xp_events").select("topic, xp").eq("user_id", user.id),
+      supabase.from("topic_connections").select("from_topic, to_topic, weight").eq("user_id", user.id),
+    ]);
+    setProfile(prof as ProfileRow);
+    const tally = new Map<string, number>();
+    (events || []).forEach((e: { topic: string; xp: number }) => tally.set(e.topic, (tally.get(e.topic) || 0) + e.xp));
+    setTopicXp([...tally.entries()].map(([topic, xp]) => ({ topic, xp })).sort((a, b) => b.xp - a.xp));
+    setConnections((conns || []) as ConnectionRow[]);
   }, [user]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  // Refresh stats whenever the page is focused/becomes visible (e.g. after reading)
+  useEffect(() => {
+    const onFocus = () => reload();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [reload]);
+
+  const startEditName = () => {
+    setNameDraft(profile?.display_name || "");
+    setEditingName(true);
+  };
+  const saveName = async () => {
+    if (!user) return;
+    const next = nameDraft.trim();
+    if (!next) { toast.error("Name can't be empty."); return; }
+    if (next === profile?.display_name) { setEditingName(false); return; }
+    setSavingName(true);
+    try {
+      // Check for case-insensitive collision
+      const { data: clash } = await supabase.from("profiles").select("id")
+        .ilike("display_name", next).neq("id", user.id).limit(1);
+      if (clash && clash.length) { toast.error("That name is already taken."); return; }
+      const { error } = await supabase.from("profiles").update({ display_name: next }).eq("id", user.id);
+      if (error) throw error;
+      setProfile((p) => p ? { ...p, display_name: next } : p);
+      setEditingName(false);
+      toast.success("Display name updated.");
+      window.dispatchEvent(new CustomEvent("curio:display-name-changed", { detail: next }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update name");
+    } finally { setSavingName(false); }
+  };
 
   const info = profile ? levelFromXp(profile.xp || 0) : levelFromXp(0);
   const minutesRead = Math.floor((profile?.seconds_read || 0) / 60);
@@ -101,9 +143,33 @@ const Profile = () => {
             </div>
             <div className="flex-1">
               <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Reader</div>
-              <div className="font-display text-2xl md:text-3xl font-bold text-foreground">
-                {profile?.display_name || "Curious Reader"}
-              </div>
+              {editingName ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    autoFocus
+                    maxLength={40}
+                    className="bg-paper/60 border-wood/40 h-9 max-w-xs font-display text-xl"
+                    onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
+                  />
+                  <Button size="sm" onClick={saveName} disabled={savingName} className="h-8 bg-leather-green text-paper">
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingName(false)} className="h-8 border-wood/40">
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={startEditName}
+                  className="group inline-flex items-center gap-2 font-display text-2xl md:text-3xl font-bold text-foreground hover:text-primary transition-colors text-left"
+                  title="Click to rename"
+                >
+                  {profile?.display_name || "Curious Reader"}
+                  <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
               <div className="font-display text-lg text-primary italic mt-1">
                 Lv {info.level} · {info.title}
               </div>

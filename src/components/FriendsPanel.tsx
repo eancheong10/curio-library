@@ -63,8 +63,9 @@ export const FriendsPanel = () => {
         const { data } = await supabase.from("profiles").select("id, display_name").eq("short_code", handle.toUpperCase()).maybeSingle();
         target = data as typeof target;
       } else {
-        const { data: targets } = await supabase.from("profiles").select("id, display_name").ilike("display_name", handle).limit(5);
-        // exact case-insensitive match wins
+        const { data: targets } = await supabase.from("profiles")
+          .select("id, display_name")
+          .ilike("display_name", `%${handle}%`).limit(10);
         target = (targets?.find((t) => (t.display_name || "").toLowerCase() === handle.toLowerCase()) as typeof target)
           || (targets?.[0] as typeof target) || null;
       }
@@ -130,7 +131,7 @@ export const FriendsPanel = () => {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Friend's display name or 12-char code…"
+          placeholder="Friend's name (partial OK) or 12-char code…"
           className="bg-paper/50 border-wood/30"
         />
         <Button type="submit" size="sm" disabled={busy || !query.trim()} className="bg-gradient-gold text-ink">

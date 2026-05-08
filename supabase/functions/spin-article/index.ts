@@ -274,6 +274,7 @@ Deno.serve(async (req) => {
         ],
         tools,
         tool_choice: { type: "function", function: { name: "publish_article" } },
+        max_tokens: 4000,
       }),
     });
 
