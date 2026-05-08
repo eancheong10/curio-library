@@ -186,13 +186,14 @@ const ChallengeRoom = () => {
     if (!challenge) return;
     const bothDone = challenge.challenger_done_reading && challenge.opponent_done_reading;
     const timeExpired = readingTimedOut(challenge.reading_started_at, challenge.article_body);
+    const hasQuestions = (challenge.questions?.length ?? 0) > 0;
     const ready =
       challenge.status === "reading" &&
       (bothDone || timeExpired) &&
-      (challenge.questions?.length ?? 0) > 0;
+      hasQuestions;
     if (!ready) { setQuizCountdown(null); return; }
 
-    setQuizCountdown((c) => (c === null ? (bothDone ? 5 : 1) : c));
+    setQuizCountdown((c) => (c === null ? (bothDone ? 3 : 1) : c));
     const t = setInterval(() => {
       setQuizCountdown((c) => {
         if (c === null) return null;
