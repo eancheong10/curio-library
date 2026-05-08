@@ -526,8 +526,8 @@ const ChallengeRoom = () => {
               ) : readingExpired && quizCountdown !== null ? (
                 <span className="text-sm font-bold text-leather-red">Quiz starting…</span>
               ) : !myDoneReading ? (
-                <Button onClick={markDoneReading} className="bg-gradient-gold text-ink font-bold">
-                  End reading session
+                <Button onClick={markDoneReading} disabled={endingReading} className="bg-gradient-gold text-ink font-bold">
+                  {endingReading ? "Starting quiz…" : "End reading session"}
                 </Button>
               ) : challenge.challenger_done_reading && challenge.opponent_done_reading && !challenge.questions?.length ? (
                 <span className="text-sm text-muted-foreground italic">Preparing questions…</span>
