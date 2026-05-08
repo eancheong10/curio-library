@@ -62,7 +62,7 @@ const Auth = () => {
           toast.error("That email already has a library card. Try signing in instead.");
           return;
         }
-        toast.success("Welcome to the library! Step inside.");
+        toast.success("Check your email to verify your account, then return here to sign in.", { duration: 6000 });
         // If signup returned a session immediately (auto-confirm on), make sure
         // the new reader has a settings row and go straight to onboarding.
         if (data.session && data.user) {
@@ -73,6 +73,7 @@ const Auth = () => {
           navigate("/onboarding");
           return;
         }
+        setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -80,7 +81,9 @@ const Auth = () => {
       }
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Something went wrong";
-      const friendly = /invalid login credentials/i.test(raw)
+      const friendly = /email not confirmed/i.test(raw)
+        ? "Please check your email and verify your account before signing in."
+        : /invalid login credentials/i.test(raw)
         ? "No account with that email & password. New here? Tap “Get a library card” to sign up."
         : /profiles_display_name_unique_ci|duplicate key/i.test(raw)
         ? "That username is already taken. Try another one."
