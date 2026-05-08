@@ -143,9 +143,33 @@ const Profile = () => {
             </div>
             <div className="flex-1">
               <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Reader</div>
-              <div className="font-display text-2xl md:text-3xl font-bold text-foreground">
-                {profile?.display_name || "Curious Reader"}
-              </div>
+              {editingName ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    autoFocus
+                    maxLength={40}
+                    className="bg-paper/60 border-wood/40 h-9 max-w-xs font-display text-xl"
+                    onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
+                  />
+                  <Button size="sm" onClick={saveName} disabled={savingName} className="h-8 bg-leather-green text-paper">
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingName(false)} className="h-8 border-wood/40">
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={startEditName}
+                  className="group inline-flex items-center gap-2 font-display text-2xl md:text-3xl font-bold text-foreground hover:text-primary transition-colors text-left"
+                  title="Click to rename"
+                >
+                  {profile?.display_name || "Curious Reader"}
+                  <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
               <div className="font-display text-lg text-primary italic mt-1">
                 Lv {info.level} · {info.title}
               </div>
