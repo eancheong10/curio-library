@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Curio Library — Cozy library design system. All colors HSL.
+   Themes override these variables at runtime via src/lib/themes.ts. */
+
+:root { --reader-font-size: 17px; }
+.prose { font-size: var(--reader-font-size); color: hsl(var(--foreground)); }
+.prose p, .prose li, .prose strong, .prose em { color: hsl(var(--foreground)); font-size: var(--reader-font-size); }
+.prose a { color: hsl(var(--primary)); }
+
+@layer base {
+  :root {
+    /* Parchment & ink palette */
+    --background: 38 40% 94%;            /* warm cream parchment */
+    --foreground: 25 35% 15%;            /* deep ink brown */
+
+    --card: 36 45% 90%;                  /* aged paper */
+    --card-foreground: 25 35% 15%;
+
+    --popover: 36 45% 92%;
+    --popover-foreground: 25 35% 15%;
+
+    --primary: 18 65% 32%;               /* rich mahogany */
+    --primary-foreground: 38 50% 96%;
+
+    --secondary: 30 30% 80%;             /* light wood */
+    --secondary-foreground: 25 35% 18%;
+
+    --muted: 36 25% 85%;
+    --muted-foreground: 25 20% 38%;
+
+    --accent: 38 75% 50%;                /* warm amber/gold */
+    --accent-foreground: 25 50% 12%;
+
+    --destructive: 0 60% 40%;
+    --destructive-foreground: 38 50% 96%;
+
+    --border: 30 25% 70%;
+    --input: 30 25% 78%;
+    --ring: 18 65% 32%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --wood-dark: 22 45% 22%;
+    --wood: 22 40% 32%;
+    --wood-light: 28 35% 50%;
+    --gold: 42 80% 55%;
+    --gold-deep: 38 75% 42%;
+    --leather-red: 8 55% 35%;
+    --leather-green: 130 30% 25%;
+    --leather-blue: 215 35% 28%;
+    --leather-mustard: 42 60% 40%;
+    --ink: 25 50% 12%;
+    --paper: 38 50% 94%;
+
+    --gradient-wood: linear-gradient(180deg, hsl(var(--wood)) 0%, hsl(var(--wood-dark)) 100%);
+    --gradient-shelf: linear-gradient(180deg, hsl(22 45% 28%) 0%, hsl(22 50% 18%) 100%);
+    --gradient-paper: linear-gradient(180deg, hsl(38 55% 96%) 0%, hsl(36 40% 88%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-deep)) 100%);
+    --gradient-lamp: radial-gradient(ellipse at top, hsl(42 80% 70% / 0.35) 0%, transparent 60%);
+
+    --shadow-book: 2px 2px 0 hsl(25 50% 12% / 0.25), 4px 4px 12px hsl(25 50% 12% / 0.2);
+    --shadow-deep: 0 20px 50px -12px hsl(25 50% 10% / 0.45);
+    --shadow-page: 0 8px 30px hsl(25 50% 15% / 0.18), inset 0 0 60px hsl(36 35% 70% / 0.25);
+    --shadow-spine: inset -2px 0 4px hsl(0 0% 0% / 0.3), inset 2px 0 2px hsl(0 0% 100% / 0.15);
+
+    --transition-cozy: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .dark {
+    --background: 25 35% 8%;
+    --foreground: 38 40% 90%;
+    --card: 25 30% 12%;
+    --card-foreground: 38 40% 90%;
+    --popover: 25 30% 12%;
+    --popover-foreground: 38 40% 90%;
+    --primary: 38 75% 55%;
+    --primary-foreground: 25 50% 10%;
+    --secondary: 25 25% 18%;
+    --secondary-foreground: 38 40% 90%;
+    --muted: 25 20% 18%;
+    --muted-foreground: 36 25% 65%;
+    --accent: 38 80% 55%;
+    --accent-foreground: 25 50% 10%;
+    --border: 25 25% 22%;
+    --input: 25 25% 22%;
+    --ring: 38 75% 55%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+    background-image:
+      radial-gradient(ellipse at top, hsl(42 60% 70% / 0.08) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', 'Lora', Georgia, serif;
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Playfair Display', Georgia, serif; }
+  .font-body { font-family: 'Lora', Georgia, serif; }
+
+  .paper-texture {
+    background-image:
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E"),
+      var(--gradient-paper);
+  }
+
+  .wood-texture {
+    background:
+      repeating-linear-gradient(90deg,
+        hsl(22 45% 22%) 0px,
+        hsl(22 50% 26%) 2px,
+        hsl(22 40% 20%) 4px,
+        hsl(22 45% 24%) 7px),
+      var(--gradient-wood);
+  }
+
+  .shelf-shadow {
+    box-shadow: var(--shadow-deep);
+  }
+
+  .book-spine {
+    box-shadow: var(--shadow-spine), var(--shadow-book);
+  }
+
+  .lamp-glow {
+    background: var(--gradient-lamp);
+  }
+}
+
+@keyframes spin-wheel {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(var(--spin-end, 1800deg)); }
+}
+@keyframes book-open {
+  from { transform: perspective(1000px) rotateY(-20deg) scale(0.92); opacity: 0; }
+  to { transform: perspective(1000px) rotateY(0deg) scale(1); opacity: 1; }
+}
+@keyframes float-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes flicker {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.animate-spin-wheel { animation: spin-wheel 4s cubic-bezier(0.17, 0.67, 0.21, 1) forwards; }
+.animate-book-open { animation: book-open 0.5s ease-out forwards; }
+.animate-float-up { animation: float-up 0.6s ease-out forwards; }
+.animate-flicker { animation: flicker 3s ease-in-out infinite; }
