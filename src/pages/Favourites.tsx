@@ -47,6 +47,7 @@ const Favourites = () => {
   const [draggedArticleId, setDraggedArticleId] = useState<string | null>(null);
   // Add-article picker
   const [pickerShelfId, setPickerShelfId] = useState<string | "unfiled" | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
 
   useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
 
