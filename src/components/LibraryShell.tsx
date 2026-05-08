@@ -22,8 +22,18 @@ export const LibraryShell = ({ children, hideFooter }: { children: ReactNode; hi
 
   useEffect(() => {
     if (!user) { setDisplayName(""); return; }
-    supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle()
-      .then(({ data }) => setDisplayName(data?.display_name || (user.email ? user.email.split("@")[0] : "Reader")));
+    const fetchName = () => {
+      supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle()
+        .then(({ data }) => setDisplayName(data?.display_name || (user.email ? user.email.split("@")[0] : "Reader")));
+    };
+    fetchName();
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail === "string" && detail) setDisplayName(detail);
+      else fetchName();
+    };
+    window.addEventListener("curio:display-name-changed", onChange);
+    return () => window.removeEventListener("curio:display-name-changed", onChange);
   }, [user]);
 
   const signOut = async () => {
