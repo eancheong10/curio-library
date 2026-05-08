@@ -78,6 +78,7 @@ const ChallengeRoom = () => {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [localScore, setLocalScore] = useState(0);
+  const [endingReading, setEndingReading] = useState(false);
   const xpAwardedRef = useRef(false);
   const winBonusRef = useRef(false);
 
@@ -343,19 +344,42 @@ const ChallengeRoom = () => {
 
   const markDoneReading = async () => {
     if (!challenge || !user) return;
+    setEndingReading(true);
     const isChallenger = user.id === challenge.challenger_id;
     const patch = isChallenger ? { challenger_done_reading: true } : { opponent_done_reading: true };
-    await supabase.from("quiz_challenges").update(patch).eq("id", challenge.id);
-    if (!xpAwardedRef.current && challenge.article_body && challenge.topic && challenge.article_title) {
-      xpAwardedRef.current = true;
-      awardRead({
-        topic: challenge.topic,
-        title: challenge.article_title,
-        secondsSpent: Math.max(30, readingSeconds(challenge.article_body) - readingLeft),
-        summary: challenge.article_summary,
-        body: challenge.article_body,
-        sourceKind: "spin",
-      });
+    try {
+      const updatedChallenge = { ...challenge, ...patch };
+      setChallenge(updatedChallenge);
+      const { error: doneError } = await supabase
+        .from("quiz_challenges")
+        .update(patch)
+        .eq("id", challenge.id);
+      if (doneError) throw doneError;
+
+      if (!xpAwardedRef.current && challenge.article_body && challenge.topic && challenge.article_title) {
+        xpAwardedRef.current = true;
+        awardRead({
+          topic: challenge.topic,
+          title: challenge.article_title,
+          secondsSpent: Math.max(30, readingSeconds(challenge.article_body) - readingLeft),
+          summary: challenge.article_summary,
+          body: challenge.article_body,
+          sourceKind: "spin",
+        });
+      }
+
+      const questions = await ensureQuestions(updatedChallenge);
+      const { error: quizError } = await supabase
+        .from("quiz_challenges")
+        .update({ questions: questions as any, status: "quizzing" })
+        .eq("id", challenge.id);
+      if (quizError) throw quizError;
+      setChallenge({ ...updatedChallenge, questions, status: "quizzing" });
+      setQuizCountdown(null);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Couldn't start the quiz.");
+      setEndingReading(false);
     }
   };
 
@@ -505,8 +529,8 @@ const ChallengeRoom = () => {
               ) : readingExpired && quizCountdown !== null ? (
                 <span className="text-sm font-bold text-leather-red">Quiz starting…</span>
               ) : !myDoneReading ? (
-                <Button onClick={markDoneReading} className="bg-gradient-gold text-ink font-bold">
-                  End reading session
+                <Button onClick={markDoneReading} disabled={endingReading} className="bg-gradient-gold text-ink font-bold">
+                  {endingReading ? "Starting quiz…" : "End reading session"}
                 </Button>
               ) : challenge.challenger_done_reading && challenge.opponent_done_reading && !challenge.questions?.length ? (
                 <span className="text-sm text-muted-foreground italic">Preparing questions…</span>

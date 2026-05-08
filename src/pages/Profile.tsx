@@ -93,7 +93,8 @@ const Profile = () => {
       toast.success("Display name updated.");
       window.dispatchEvent(new CustomEvent("curio:display-name-changed", { detail: next }));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't update name");
+      const raw = e instanceof Error ? e.message : "Couldn't update name";
+      toast.error(/profiles_display_name_unique_ci|duplicate key/i.test(raw) ? "That username is already taken." : raw);
     } finally { setSavingName(false); }
   };
 
