@@ -63,8 +63,9 @@ export const FriendsPanel = () => {
         const { data } = await supabase.from("profiles").select("id, display_name").eq("short_code", handle.toUpperCase()).maybeSingle();
         target = data as typeof target;
       } else {
-        const { data: targets } = await supabase.from("profiles").select("id, display_name").ilike("display_name", handle).limit(5);
-        // exact case-insensitive match wins
+        const { data: targets } = await supabase.from("profiles")
+          .select("id, display_name")
+          .ilike("display_name", `%${handle}%`).limit(10);
         target = (targets?.find((t) => (t.display_name || "").toLowerCase() === handle.toLowerCase()) as typeof target)
           || (targets?.[0] as typeof target) || null;
       }
