@@ -38,24 +38,64 @@ const Profile = () => {
   const [connections, setConnections] = useState<ConnectionRow[]>([]);
   const [mapFull, setMapFull] = useState(false);
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      const [{ data: prof }, { data: events }, { data: conns }] = await Promise.all([
-        supabase.from("profiles").select("display_name, xp, articles_read, seconds_read, top_topic, current_streak, highest_streak, last_read_date").eq("id", user.id).maybeSingle(),
-        supabase.from("xp_events").select("topic, xp").eq("user_id", user.id),
-        supabase.from("topic_connections").select("from_topic, to_topic, weight").eq("user_id", user.id),
-      ]);
-      setProfile(prof as ProfileRow);
-      const tally = new Map<string, number>();
-      (events || []).forEach((e: { topic: string; xp: number }) => tally.set(e.topic, (tally.get(e.topic) || 0) + e.xp));
-      setTopicXp([...tally.entries()].map(([topic, xp]) => ({ topic, xp })).sort((a, b) => b.xp - a.xp));
-      setConnections((conns || []) as ConnectionRow[]);
-    })();
+    const [{ data: prof }, { data: events }, { data: conns }] = await Promise.all([
+      supabase.from("profiles").select("display_name, xp, articles_read, seconds_read, top_topic, current_streak, highest_streak, last_read_date").eq("id", user.id).maybeSingle(),
+      supabase.from("xp_events").select("topic, xp").eq("user_id", user.id),
+      supabase.from("topic_connections").select("from_topic, to_topic, weight").eq("user_id", user.id),
+    ]);
+    setProfile(prof as ProfileRow);
+    const tally = new Map<string, number>();
+    (events || []).forEach((e: { topic: string; xp: number }) => tally.set(e.topic, (tally.get(e.topic) || 0) + e.xp));
+    setTopicXp([...tally.entries()].map(([topic, xp]) => ({ topic, xp })).sort((a, b) => b.xp - a.xp));
+    setConnections((conns || []) as ConnectionRow[]);
   }, [user]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  // Refresh stats whenever the page is focused/becomes visible (e.g. after reading)
+  useEffect(() => {
+    const onFocus = () => reload();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [reload]);
+
+  const startEditName = () => {
+    setNameDraft(profile?.display_name || "");
+    setEditingName(true);
+  };
+  const saveName = async () => {
+    if (!user) return;
+    const next = nameDraft.trim();
+    if (!next) { toast.error("Name can't be empty."); return; }
+    if (next === profile?.display_name) { setEditingName(false); return; }
+    setSavingName(true);
+    try {
+      // Check for case-insensitive collision
+      const { data: clash } = await supabase.from("profiles").select("id")
+        .ilike("display_name", next).neq("id", user.id).limit(1);
+      if (clash && clash.length) { toast.error("That name is already taken."); return; }
+      const { error } = await supabase.from("profiles").update({ display_name: next }).eq("id", user.id);
+      if (error) throw error;
+      setProfile((p) => p ? { ...p, display_name: next } : p);
+      setEditingName(false);
+      toast.success("Display name updated.");
+      window.dispatchEvent(new CustomEvent("curio:display-name-changed", { detail: next }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update name");
+    } finally { setSavingName(false); }
+  };
 
   const info = profile ? levelFromXp(profile.xp || 0) : levelFromXp(0);
   const minutesRead = Math.floor((profile?.seconds_read || 0) / 60);
