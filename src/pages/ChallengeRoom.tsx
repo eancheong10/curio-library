@@ -224,16 +224,23 @@ const ChallengeRoom = () => {
     return () => clearInterval(t);
   }, [challenge?.status, id]);
 
-  // When both finished → mark finished + award win bonus (challenger writes once)
+  // When both finished → mark finished. Either party can write the flip
+  // (whoever sees both finished first); the update is idempotent.
+  const finishFlipRef = useRef(false);
   useEffect(() => {
     if (!challenge || !user) return;
     if (
       challenge.status === "quizzing" &&
       challenge.challenger_finished &&
       challenge.opponent_finished &&
-      user.id === challenge.challenger_id
+      !finishFlipRef.current
     ) {
-      supabase.from("quiz_challenges").update({ status: "finished" }).eq("id", challenge.id);
+      finishFlipRef.current = true;
+      supabase
+        .from("quiz_challenges")
+        .update({ status: "finished" })
+        .eq("id", challenge.id)
+        .then(({ error }) => { if (error) finishFlipRef.current = false; });
     }
     // eslint-disable-next-line
   }, [challenge?.challenger_finished, challenge?.opponent_finished, challenge?.status]);
