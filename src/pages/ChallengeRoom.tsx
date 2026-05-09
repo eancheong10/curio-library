@@ -368,17 +368,15 @@ const ChallengeRoom = () => {
         });
       }
 
-      const questions = await ensureQuestions(updatedChallenge);
-      const { error: quizError } = await supabase
-        .from("quiz_challenges")
-        .update({ questions: questions as any, status: "quizzing" })
-        .eq("id", challenge.id);
-      if (quizError) throw quizError;
-      setChallenge({ ...updatedChallenge, questions, status: "quizzing" });
-      setQuizCountdown(null);
+      // Pre-generate questions in the background so the quiz can start the
+      // moment BOTH readers press "End reading session". We deliberately do
+      // NOT flip status to "quizzing" here — that only happens once both
+      // sides are done (handled by the effect below).
+      ensureQuestions(updatedChallenge).catch((e) => console.error(e));
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : "Couldn't start the quiz.");
+      toast.error(e instanceof Error ? e.message : "Couldn't end reading session.");
+    } finally {
       setEndingReading(false);
     }
   };
