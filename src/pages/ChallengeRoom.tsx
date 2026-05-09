@@ -224,16 +224,23 @@ const ChallengeRoom = () => {
     return () => clearInterval(t);
   }, [challenge?.status, id]);
 
-  // When both finished → mark finished + award win bonus (challenger writes once)
+  // When both finished → mark finished. Either party can write the flip
+  // (whoever sees both finished first); the update is idempotent.
+  const finishFlipRef = useRef(false);
   useEffect(() => {
     if (!challenge || !user) return;
     if (
       challenge.status === "quizzing" &&
       challenge.challenger_finished &&
       challenge.opponent_finished &&
-      user.id === challenge.challenger_id
+      !finishFlipRef.current
     ) {
-      supabase.from("quiz_challenges").update({ status: "finished" }).eq("id", challenge.id);
+      finishFlipRef.current = true;
+      supabase
+        .from("quiz_challenges")
+        .update({ status: "finished" })
+        .eq("id", challenge.id)
+        .then(({ error }) => { if (error) finishFlipRef.current = false; });
     }
     // eslint-disable-next-line
   }, [challenge?.challenger_finished, challenge?.opponent_finished, challenge?.status]);
@@ -368,17 +375,15 @@ const ChallengeRoom = () => {
         });
       }
 
-      const questions = await ensureQuestions(updatedChallenge);
-      const { error: quizError } = await supabase
-        .from("quiz_challenges")
-        .update({ questions: questions as any, status: "quizzing" })
-        .eq("id", challenge.id);
-      if (quizError) throw quizError;
-      setChallenge({ ...updatedChallenge, questions, status: "quizzing" });
-      setQuizCountdown(null);
+      // Pre-generate questions in the background so the quiz can start the
+      // moment BOTH readers press "End reading session". We deliberately do
+      // NOT flip status to "quizzing" here — that only happens once both
+      // sides are done (handled by the effect below).
+      ensureQuestions(updatedChallenge).catch((e) => console.error(e));
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : "Couldn't start the quiz.");
+      toast.error(e instanceof Error ? e.message : "Couldn't end reading session.");
+    } finally {
       setEndingReading(false);
     }
   };
@@ -529,8 +534,8 @@ const ChallengeRoom = () => {
               ) : readingExpired && quizCountdown !== null ? (
                 <span className="text-sm font-bold text-leather-red">Quiz starting…</span>
               ) : !myDoneReading ? (
-                <Button onClick={markDoneReading} disabled={endingReading} className="bg-gradient-gold text-ink font-bold">
-                  {endingReading ? "Starting quiz…" : "End reading session"}
+                <Button onClick={markDoneReading} disabled={endingReading} className="bg-gradient-gold text-ink font-bold justify-center">
+                  {endingReading ? "Saving…" : "End reading session"}
                 </Button>
               ) : challenge.challenger_done_reading && challenge.opponent_done_reading && !challenge.questions?.length ? (
                 <span className="text-sm text-muted-foreground italic">Preparing questions…</span>
