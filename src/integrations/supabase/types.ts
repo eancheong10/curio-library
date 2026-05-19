@@ -204,6 +204,72 @@ export type Database = {
         }
         Relationships: []
       }
+      library_articles: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          emoji: string
+          id: string
+          questions: Json
+          related_topics: Json
+          summary: string
+          title: string
+          topic: string
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          questions?: Json
+          related_topics?: Json
+          summary: string
+          title: string
+          topic: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          questions?: Json
+          related_topics?: Json
+          summary?: string
+          title?: string
+          topic?: string
+        }
+        Relationships: []
+      }
+      library_daily_drops: {
+        Row: {
+          body: string
+          emoji: string
+          fact: string
+          month_day: string
+          title: string
+          topic: string
+        }
+        Insert: {
+          body: string
+          emoji?: string
+          fact: string
+          month_day: string
+          title: string
+          topic?: string
+        }
+        Update: {
+          body?: string
+          emoji?: string
+          fact?: string
+          month_day?: string
+          title?: string
+          topic?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           articles_read: number
