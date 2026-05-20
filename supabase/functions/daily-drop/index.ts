@@ -30,13 +30,17 @@ Deno.serve(async (req) => {
       .eq("month_day", monthDay)
       .maybeSingle();
 
-    // 3) If no seed exists for today's date yet, pick a random one so the feature still works.
+    // 3) If no seed exists for today's exact date, pick deterministically by day-of-year
+    //    so the same date always shows the same "on this day" entry (not random per refresh).
     if (!seed) {
       const { data: all } = await admin
         .from("library_daily_drops")
-        .select("*");
+        .select("*")
+        .order("month_day", { ascending: true });
       if (all && all.length) {
-        seed = all[Math.floor(Math.random() * all.length)];
+        const start = new Date(Date.UTC(now.getUTCFullYear(), 0, 0));
+        const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
+        seed = all[dayOfYear % all.length];
       }
     }
 
