@@ -63,7 +63,7 @@ const Daily = () => {
         ) : (
           <PaperCard className="p-8 md:p-12 animate-book-open">
             <div className="text-xs font-semibold uppercase tracking-widest text-leather-mustard mb-2">
-              Daily Curiosity Drop · {drop.topic}
+              On This Day in History · {drop.topic}
             </div>
             <div className="text-7xl mb-4">{drop.emoji}</div>
             <h1 className="font-display text-3xl md:text-5xl font-bold text-foreground leading-tight mb-3">
