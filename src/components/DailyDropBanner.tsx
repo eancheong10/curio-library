@@ -38,7 +38,7 @@ export const DailyDropBanner = () => {
           <div className="text-3xl group-hover:scale-110 transition-transform">{drop.emoji}</div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-gold font-bold">
-              <Sparkles className="h-3 w-3" /> Daily Curiosity Drop · {drop.topic}
+              <Sparkles className="h-3 w-3" /> On This Day in History · {drop.topic}
             </div>
             <div className="font-display text-paper text-base md:text-lg font-bold leading-tight truncate">
               {drop.title}
