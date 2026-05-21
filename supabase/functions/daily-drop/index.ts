@@ -30,17 +30,25 @@ Deno.serve(async (req) => {
       .eq("month_day", monthDay)
       .maybeSingle();
 
-    // 3) If no seed exists for today's exact date, pick deterministically by day-of-year
-    //    so the same date always shows the same "on this day" entry (not random per refresh).
+    // 3) If today has no curated entry, find the NEAREST upcoming/recent calendar date
+    //    that does. Never invent an event for a date it didn't happen on.
     if (!seed) {
       const { data: all } = await admin
         .from("library_daily_drops")
         .select("*")
         .order("month_day", { ascending: true });
       if (all && all.length) {
-        const start = new Date(Date.UTC(now.getUTCFullYear(), 0, 0));
-        const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
-        seed = all[dayOfYear % all.length];
+        const toNum = (md: string) => parseInt(md.slice(0,2)) * 31 + parseInt(md.slice(3,5));
+        const todayN = toNum(monthDay);
+        let best = all[0]; let bestDist = 999;
+        for (const row of all) {
+          const d = Math.abs(toNum(row.month_day) - todayN);
+          if (d < bestDist) { bestDist = d; best = row; }
+        }
+        seed = best;
+        // Mark as "from nearby date" so UI can be honest
+        seed.title = `${seed.title}`;
+        seed.fact = `(Nearest date on file — ${seed.month_day}.) ${seed.fact}`;
       }
     }
 
