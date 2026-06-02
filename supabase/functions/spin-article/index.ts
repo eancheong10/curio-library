@@ -1,9 +1,7 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-// Topic pools surfaced to the UI (Spin wheel, category pickers). The actual
-// articles returned come from the library_articles table — this is just the
-// menu of topics readers can choose between.
+// Topic pools surfaced to the UI (Spin wheel, category pickers).
 const CATEGORIES = {
   history: ["Ancient Egypt","Roman Empire","Vikings","WWII Codebreakers","Mongol Empire","Silk Road Secrets","The Black Death","The French Revolution","Apollo Program","Civil Rights Movement"],
   science: ["Volcanoes","Black Holes","Dinosaurs","CRISPR","Octopus Intelligence","Exoplanets","Gravitational Waves","Human Evolution","Sleep Science","Whale Songs"],
@@ -36,6 +34,85 @@ interface Body {
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
+const EMOJI_BY_CAT: Record<string, string> = {
+  history: "📜", science: "🔬", philosophy: "🧠", politics: "🏛️",
+  arts: "🎨", games: "🎲", mysteries: "🕵️", nature: "🌿", tech: "💻", words: "🔤",
+};
+
+function guessEmoji(topic: string): string {
+  for (const [cat, list] of Object.entries(CATEGORIES)) {
+    if ((list as readonly string[]).some(t => t.toLowerCase() === topic.toLowerCase())) {
+      return EMOJI_BY_CAT[cat] || "📖";
+    }
+  }
+  return "📖";
+}
+
+async function generateWithAI(topic: string, direction?: string, previousTitle?: string) {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) throw new Error("AI not configured");
+
+  const directionHint = direction
+    ? `The reader just finished an article titled "${previousTitle ?? topic}" and chose the "${direction}" path — angle this piece accordingly (cause = what led up to it; impact = what came after; opposite = a contrasting perspective; related = a sibling topic; random = a surprising tangent).`
+    : "";
+
+  const system = `You are a curator for "Curio Library", a cozy, library-themed curiosity app. Write a long, richly informative, engaging article (700-1000 words) for a curious general reader. Tone: warm, witty, vivid — like an enthusiastic librarian. Use 5-8 paragraphs separated by blank lines. No headings, no markdown, no lists — plain flowing prose. Be factually careful and concrete (dates, names, places, numbers when relevant).`;
+
+  const userPrompt = `Topic: ${topic}\n${directionHint}\n\nReturn a structured article via the publish_article tool.`;
+
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "publish_article",
+          description: "Publish a long-form curiosity article.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Catchy, specific title (max 90 chars)." },
+              summary: { type: "string", description: "One-sentence teaser (max 200 chars)." },
+              body: { type: "string", description: "The full 700-1000 word article body. Paragraphs separated by blank lines. No markdown." },
+              emoji: { type: "string", description: "A single emoji that captures the vibe." },
+              related_topics: {
+                type: "array", items: { type: "string" },
+                description: "4-6 short related topic names a reader might jump to next.",
+              },
+            },
+            required: ["title", "summary", "body", "emoji", "related_topics"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "publish_article" } },
+    }),
+  });
+
+  if (!resp.ok) {
+    const t = await resp.text();
+    throw new Error(`AI gateway ${resp.status}: ${t.slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  const call = data?.choices?.[0]?.message?.tool_calls?.[0];
+  if (!call) throw new Error("No tool call in AI response");
+  const args = JSON.parse(call.function.arguments);
+  return {
+    title: args.title,
+    summary: args.summary,
+    body: args.body,
+    topic,
+    emoji: args.emoji || guessEmoji(topic),
+    related_topics: args.related_topics || [],
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -50,57 +127,60 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Decide the topic the reader is asking for
+    // Decide the topic
     let requested: string | null = null;
     if (body.topic) requested = body.topic.slice(0, 120);
-    else if (body.fromTopic && body.direction) requested = body.fromTopic; // rabbit hole — try same topic family
+    else if (body.fromTopic && body.direction) requested = body.fromTopic;
     else if (body.category && body.category !== "any" && CATEGORIES[body.category]) requested = pick([...CATEGORIES[body.category]]);
     else if (body.mode === "jackpot") requested = pick(JACKPOT_TOPICS);
     else if (body.mode === "risk") requested = pick(RISK_TOPICS);
     else requested = pick(SAFE_TOPICS);
 
-    // 1) Try exact-topic match (case-insensitive). Pick a random one that isn't the previous title.
+    const pickedTopic = requested!;
+
+    // 1) Try AI first — gives long, fresh articles every spin.
+    try {
+      const shaped = await generateWithAI(pickedTopic, body.direction, body.previousTitle);
+
+      // Cache to library for future reuse / offline fallback (best effort)
+      admin.from("library_articles").insert({
+        title: shaped.title,
+        summary: shaped.summary,
+        body: shaped.body,
+        topic: pickedTopic,
+        emoji: shaped.emoji,
+        related_topics: shaped.related_topics,
+      }).then(() => {}, () => {});
+
+      return new Response(JSON.stringify({
+        article: shaped, pickedTopic, mode: body.mode || "safe",
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (aiErr) {
+      console.warn("AI generation failed, falling back to library:", aiErr instanceof Error ? aiErr.message : aiErr);
+    }
+
+    // 2) Fallback: library lookup (so spins keep working even if AI is rate-limited / out of credits).
     let article: Record<string, unknown> | null = null;
-    let pickedTopic = requested!;
-    if (requested) {
-      const { data } = await admin
-        .from("library_articles")
-        .select("*")
-        .ilike("topic", requested);
-      const candidates = (data || []).filter((a) => a.title !== body.previousTitle);
-      if (candidates.length) {
-        article = candidates[Math.floor(Math.random() * candidates.length)];
-        pickedTopic = (article!.topic as string) ?? requested;
-      }
+    let resolvedTopic = pickedTopic;
+    const { data } = await admin.from("library_articles").select("*").ilike("topic", pickedTopic);
+    const candidates = (data || []).filter((a) => a.title !== body.previousTitle);
+    if (candidates.length) {
+      article = candidates[Math.floor(Math.random() * candidates.length)];
+      resolvedTopic = (article!.topic as string) ?? pickedTopic;
     }
 
-    // 2) Rabbit-hole fallback: if no direct match, find an article whose related_topics list contains the requested topic
-    if (!article && body.fromTopic) {
-      const { data } = await admin
-        .from("library_articles")
-        .select("*")
-        .contains("related_topics", JSON.stringify([body.fromTopic]));
-      const candidates = (data || []).filter((a) => a.title !== body.previousTitle);
-      if (candidates.length) {
-        article = candidates[Math.floor(Math.random() * candidates.length)];
-        pickedTopic = article!.topic as string;
-      }
-    }
-
-    // 3) Last resort: random article from the library (still respect previousTitle)
     if (!article) {
-      const { data } = await admin.from("library_articles").select("*");
-      const candidates = (data || []).filter((a) => a.title !== body.previousTitle);
-      if (!candidates.length) {
-        return new Response(JSON.stringify({ error: "Library is empty." }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const { data: any } = await admin.from("library_articles").select("*");
+      const all = (any || []).filter((a) => a.title !== body.previousTitle);
+      if (!all.length) {
+        return new Response(JSON.stringify({ error: "Could not generate or find an article." }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      article = candidates[Math.floor(Math.random() * candidates.length)];
-      pickedTopic = article!.topic as string;
+      article = all[Math.floor(Math.random() * all.length)];
+      resolvedTopic = article!.topic as string;
     }
 
-    // Shape the response to match what the frontend expects (article + pickedTopic + mode)
     const shaped = {
       title: article!.title,
       summary: article!.summary,
@@ -111,9 +191,7 @@ Deno.serve(async (req) => {
     };
 
     return new Response(JSON.stringify({
-      article: shaped,
-      pickedTopic,
-      mode: body.mode || "safe",
+      article: shaped, pickedTopic: resolvedTopic, mode: body.mode || "safe",
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("spin-article error:", error);
