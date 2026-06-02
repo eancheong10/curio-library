@@ -53,7 +53,7 @@ CRITICAL — source_url rules:
 - If you cannot recall a confirmed article URL with a slug/ID for a story, choose a different story you DO know the URL for.
 - Prefer canonical URLs from these reliable outlets: reuters.com, apnews.com, bbc.com/news, npr.org, theguardian.com, nytimes.com, aljazeera.com, ft.com.`;
 
-    const userPrompt = `Today is ${fullDate}. Curate 6 of today's most important and intriguing news stories with a focus on **${countryLabel}** (mix in 1-2 international stories if country is not 'global'). Mix categories: politics, world, economics, science, tech, culture. Provide a working source_url and publication date (YYYY-MM-DD). The article body MUST be 5-7 complete paragraphs (~600-900 words) — never end mid-sentence, always close out the story with a clear concluding paragraph. Return ONLY valid JSON.`;
+    const userPrompt = `Today is ${fullDate}. Curate 5 of today's most important and intriguing news stories with a focus on **${countryLabel}** (mix in 1-2 international stories if country is not 'global'). Mix categories: politics, world, economics, science, tech, culture. Provide a working source_url and publication date (YYYY-MM-DD). The article body MUST be 4-5 complete paragraphs (~400-550 words) — never end mid-sentence, always close out with a clear concluding paragraph. Return ONLY valid JSON.`;
 
     const tools = [{
       type: "function",
@@ -70,7 +70,7 @@ CRITICAL — source_url rules:
                 properties: {
                   title: { type: "string", description: "Headline (max 90 chars)" },
                   summary: { type: "string", description: "1-sentence hook (max 140 chars)" },
-                  body: { type: "string", description: "5-7 complete paragraphs (~600-900 words) in warm, clear language for ages 12+. Always finish with a concluding paragraph — never end mid-sentence." },
+                  body: { type: "string", description: "4-5 complete paragraphs (~400-550 words) in warm, clear language for ages 12+. Always finish with a concluding paragraph — never end mid-sentence." },
                   topic: { type: "string", description: "One short topic label e.g. Politics, Economics, Science, World, Tech, Culture" },
                   source_name: { type: "string", description: "Real outlet name e.g. Reuters" },
                   source_url: { type: "string", description: "Deep link to the SPECIFIC article page (must include slug or article id; never just the publisher's homepage)" },
@@ -93,14 +93,14 @@ CRITICAL — source_url rules:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools,
         tool_choice: { type: "function", function: { name: "publish_news" } },
-        max_tokens: 8000,
+        max_tokens: 6000,
       }),
     });
 
