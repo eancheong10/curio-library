@@ -56,7 +56,7 @@ async function generateWithAI(topic: string, direction?: string, previousTitle?:
     ? `The reader just finished an article titled "${previousTitle ?? topic}" and chose the "${direction}" path — angle this piece accordingly (cause = what led up to it; impact = what came after; opposite = a contrasting perspective; related = a sibling topic; random = a surprising tangent).`
     : "";
 
-  const system = `You are a curator for "Curio Library", a cozy, library-themed curiosity app. Write a long, richly informative, engaging article (700-1000 words) for a curious general reader. Tone: warm, witty, vivid — like an enthusiastic librarian. Use 5-8 paragraphs separated by blank lines. No headings, no markdown, no lists — plain flowing prose. Be factually careful and concrete (dates, names, places, numbers when relevant).`;
+  const system = `You are a curator for "Curio Library", a cozy, library-themed curiosity app. Write an engaging article (450-650 words) for a curious general reader. Tone: warm, witty, vivid — like an enthusiastic librarian. Use 4-6 paragraphs separated by blank lines. No headings, no markdown, no lists — plain flowing prose. Be factually concrete (dates, names, places, numbers when relevant).`;
 
   const userPrompt = `Topic: ${topic}\n${directionHint}\n\nReturn a structured article via the publish_article tool.`;
 
@@ -64,22 +64,23 @@ async function generateWithAI(topic: string, direction?: string, previousTitle?:
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-2.5-flash-lite",
       messages: [
         { role: "system", content: system },
         { role: "user", content: userPrompt },
       ],
+      max_tokens: 2000,
       tools: [{
         type: "function",
         function: {
           name: "publish_article",
-          description: "Publish a long-form curiosity article.",
+          description: "Publish a curiosity article.",
           parameters: {
             type: "object",
             properties: {
               title: { type: "string", description: "Catchy, specific title (max 90 chars)." },
               summary: { type: "string", description: "One-sentence teaser (max 200 chars)." },
-              body: { type: "string", description: "The full 700-1000 word article body. Paragraphs separated by blank lines. No markdown." },
+              body: { type: "string", description: "A 450-650 word article body. Paragraphs separated by blank lines. No markdown." },
               emoji: { type: "string", description: "A single emoji that captures the vibe." },
               related_topics: {
                 type: "array", items: { type: "string" },
