@@ -120,9 +120,9 @@ const ChallengeRoom = () => {
       setChallenge(data as unknown as Challenge);
       // Load names
       const ids = [data.challenger_id, data.opponent_id];
-      const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", ids);
+      const { data: profs } = await supabase.rpc("get_public_profiles", { _ids: ids });
       const m = new Map<string, string>();
-      (profs || []).forEach((p: any) => m.set(p.id, p.display_name || "Reader"));
+      (profs || []).forEach((p: { id: string; display_name: string | null }) => m.set(p.id, p.display_name || "Reader"));
       setProfiles(m);
     };
     fetchOnce();
