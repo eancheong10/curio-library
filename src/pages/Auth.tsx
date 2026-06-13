@@ -175,6 +175,37 @@ const Auth = () => {
               {mode === "signin" ? "Get a library card" : "Sign in"}
             </button>
           </p>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-wood/30" /></div>
+            <div className="relative flex justify-center text-xs uppercase tracking-widest">
+              <span className="bg-paper/80 px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const { error } = await supabase.auth.signInAnonymously();
+                if (error) throw error;
+                toast.success("Welcome, wandering reader. Your progress won't be saved.", { duration: 5000 });
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Couldn't start guest session");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="w-full border-wood/40 hover:bg-gold/10"
+          >
+            Continue as guest
+          </Button>
+          <p className="text-center text-xs text-muted-foreground italic mt-2">
+            Browse freely — favourites and history won't be saved.
+          </p>
         </PaperCard>
       </div>
     </div>
