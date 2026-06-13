@@ -40,12 +40,8 @@ const Auth = () => {
       if (mode === "signup") {
         const cleanEmail = email.trim().toLowerCase();
         const cleanName = (displayName || cleanEmail.split("@")[0]).trim();
-        const { data: existingName } = await supabase
-          .from("profiles")
-          .select("id")
-          .ilike("display_name", cleanName)
-          .limit(1);
-        if (existingName?.length) {
+        const { data: taken } = await supabase.rpc("display_name_taken", { _name: cleanName });
+        if (taken) {
           toast.error("That username is already taken. Try another one.");
           return;
         }
