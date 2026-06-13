@@ -37,9 +37,9 @@ export const FriendsPanel = () => {
     const ids = new Set<string>();
     list.forEach((f) => { ids.add(f.requester_id); ids.add(f.addressee_id); });
     if (ids.size) {
-      const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", [...ids]);
+      const { data: profs } = await supabase.rpc("get_public_profiles", { _ids: [...ids] });
       const map = new Map<string, string>();
-      (profs || []).forEach((p: { id: string; display_name: string | null }) => map.set(p.id, p.display_name || "Reader"));
+      ((profs as { id: string; display_name: string | null }[]) || []).forEach((p) => map.set(p.id, p.display_name || "Reader"));
       setProfiles(map);
     }
   };
