@@ -97,8 +97,8 @@ const Quiz = () => {
         .eq("status", "accepted");
       const friendIds = (fr || []).map((f: any) => f.requester_id === user.id ? f.addressee_id : f.requester_id);
       if (friendIds.length) {
-        const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", friendIds);
-        const list = (profs || []).map((p: any) => ({ id: p.id, name: p.display_name || "Reader" }));
+        const { data: profs } = await supabase.rpc("get_public_profiles", { _ids: friendIds });
+        const list = ((profs as { id: string; display_name: string | null }[]) || []).map((p) => ({ id: p.id, name: p.display_name || "Reader" }));
         setFriends(list);
         if (list.length && !chosenFriend) setChosenFriend(list[0].id);
       }
@@ -107,8 +107,8 @@ const Quiz = () => {
         .eq("opponent_id", user.id).eq("status", "invited");
       if (invites?.length) {
         const ids = invites.map((i: any) => i.challenger_id);
-        const { data: ip } = await supabase.from("profiles").select("id, display_name").in("id", ids);
-        const nameMap = new Map<string, string>((ip || []).map((p: any) => [p.id, p.display_name || "Reader"]));
+        const { data: ip } = await supabase.rpc("get_public_profiles", { _ids: ids });
+        const nameMap = new Map<string, string>(((ip as { id: string; display_name: string | null }[]) || []).map((p) => [p.id, p.display_name || "Reader"]));
         setPendingInvites(invites.map((i: any) => ({ id: i.id, from: nameMap.get(i.challenger_id) || "Reader" })));
       }
     })();

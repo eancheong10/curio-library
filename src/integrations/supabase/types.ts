@@ -539,7 +539,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      display_name_taken: { Args: { _name: string }; Returns: boolean }
+      find_public_profile_by_code: {
+        Args: { _code: string }
+        Returns: {
+          display_name: string
+          id: string
+          short_code: string
+        }[]
+      }
       generate_short_code: { Args: never; Returns: string }
+      get_public_profiles: {
+        Args: { _ids: string[] }
+        Returns: {
+          display_name: string
+          id: string
+          short_code: string
+        }[]
+      }
+      search_public_profiles: {
+        Args: { _q: string }
+        Returns: {
+          display_name: string
+          id: string
+          short_code: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

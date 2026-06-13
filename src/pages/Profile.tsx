@@ -83,9 +83,8 @@ const Profile = () => {
     setSavingName(true);
     try {
       // Check for case-insensitive collision
-      const { data: clash } = await supabase.from("profiles").select("id")
-        .ilike("display_name", next).neq("id", user.id).limit(1);
-      if (clash && clash.length) { toast.error("That name is already taken."); return; }
+      const { data: taken } = await supabase.rpc("display_name_taken", { _name: next });
+      if (taken) { toast.error("That name is already taken."); return; }
       const { error } = await supabase.from("profiles").update({ display_name: next }).eq("id", user.id);
       if (error) throw error;
       setProfile((p) => p ? { ...p, display_name: next } : p);

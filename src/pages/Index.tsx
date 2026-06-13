@@ -55,8 +55,8 @@ const Index = () => {
       if (arts.data) setArticles(arts.data as FavArticle[]);
       const requesterIds = [...(friendReqs.data || []).map((r) => r.requester_id), ...(challenges.data || []).map((c) => c.challenger_id)];
       if (requesterIds.length) {
-        const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", requesterIds);
-        const names = new Map((profs || []).map((p) => [p.id, p.display_name || "Reader"]));
+        const { data: profs } = await supabase.rpc("get_public_profiles", { _ids: requesterIds });
+        const names = new Map(((profs as { id: string; display_name: string | null }[]) || []).map((p) => [p.id, p.display_name || "Reader"]));
         setNotices([
           ...(friendReqs.data || []).map((r) => ({ id: r.id, kind: "friend" as const, from: names.get(r.requester_id) || "Reader" })),
           ...(challenges.data || []).map((c) => ({ id: c.id, kind: "challenge" as const, from: names.get(c.challenger_id) || "Reader" })),
