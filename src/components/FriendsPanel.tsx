@@ -57,17 +57,16 @@ export const FriendsPanel = () => {
       const isShortCode = /^[A-Z2-9]{12}$/i.test(handle);
       let target: { id: string; display_name: string | null } | null = null;
       if (isUuid) {
-        const { data } = await supabase.from("profiles").select("id, display_name").eq("id", handle).maybeSingle();
-        target = data as typeof target;
+        const { data } = await supabase.rpc("get_public_profiles", { _ids: [handle] });
+        target = ((data as { id: string; display_name: string | null }[]) || [])[0] ?? null;
       } else if (isShortCode) {
-        const { data } = await supabase.from("profiles").select("id, display_name").eq("short_code", handle.toUpperCase()).maybeSingle();
-        target = data as typeof target;
+        const { data } = await supabase.rpc("find_public_profile_by_code", { _code: handle });
+        target = ((data as { id: string; display_name: string | null }[]) || [])[0] ?? null;
       } else {
-        const { data: targets } = await supabase.from("profiles")
-          .select("id, display_name")
-          .ilike("display_name", `%${handle}%`).limit(10);
-        target = (targets?.find((t) => (t.display_name || "").toLowerCase() === handle.toLowerCase()) as typeof target)
-          || (targets?.[0] as typeof target) || null;
+        const { data: targets } = await supabase.rpc("search_public_profiles", { _q: handle });
+        const list = (targets as { id: string; display_name: string | null }[]) || [];
+        target = (list.find((t) => (t.display_name || "").toLowerCase() === handle.toLowerCase()) as typeof target)
+          || (list[0] as typeof target) || null;
       }
       if (!target) { toast.error("No reader found by that name or code."); return; }
       if (target.id === user.id) { toast.error("That's you 😊"); return; }
